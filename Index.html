@@ -1,51 +1,421 @@
-
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-ag" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Interactive Planning Calendar</title>
+    <title>ORGANISATION DES MODULES DE SOUTIEN</title>
+    
+    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Libraries for PDF export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- React and ReactDOM for the application logic -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for in-browser JSX/TSX transformation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
     <style>
-      @media print {
-        body * {
-          visibility: hidden;
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .printable-area, .printable-area * {
+                visibility: visible;
+            }
+            .printable-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+            .no-print {
+                display: none;
+            }
+            @page {
+                size: A3 landscape;
+            }
         }
-        .printable-area, .printable-area * {
-          visibility: visible;
-        }
-        .printable-area {
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 100%;
-        }
-        .no-print {
-          display: none;
-        }
-        @page {
-          size: A4;
-        }
-        @page A3 {
-          size: A3;
-        }
-      }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
-  }
-}
-</script>
 </head>
-  <body class="bg-gray-900">
+<body class="bg-gray-900">
     <div id="root"></div>
-    <script type="module" src="./index.tsx"></script>
-  </body>
+
+    <script type="text/babel" data-type="module">
+
+    // --- FROM constants.ts ---
+    const PALETTE_COLORS = [
+      'bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-yellow-500', 'bg-lime-500', 'bg-green-500',
+      'bg-emerald-500', 'bg-teal-500', 'bg-cyan-500', 'bg-sky-500', 'bg-blue-500', 'bg-indigo-500',
+      'bg-violet-500', 'bg-purple-500', 'bg-fuchsia-500', 'bg-pink-500', 'bg-rose-500',
+    ];
+    const SHARED_PASSWORD = 'soutien';
+    const CALENDAR_STRUCTURE = [
+        { month: 'Septembre', weeks: [36, 37, 38, 39] }, { month: 'Octobre', weeks: [40, 41, 42, 43, 44] },
+        { month: 'Novembre', weeks: [45, 46, 47, 48] }, { month: 'Décembre', weeks: [49, 50, 51, 52] },
+        { month: 'Janvier', weeks: [1, 2, 3, 4, 5] }, { month: 'Février', weeks: [6, 7, 8, 9] },
+        { month: 'Mars', weeks: [10, 11, 12, 13] }, { month: 'Avril', weeks: [14, 15, 16, 17, 18] },
+        { month: 'Mai', weeks: [19, 20, 21, 22] }, { month: 'Juin', weeks: [23, 24, 25, 26] },
+        { month: 'Juillet', weeks: [27, 28, 29, 30, 31] }, { month: 'Août', weeks: [32, 33, 34, 35] },
+    ];
+
+    // --- FROM components/Module.tsx ---
+    const Module = ({ module, sourceCellId, isSelected, onSelect }) => {
+        const handleDragStart = (e) => {
+            e.dataTransfer.setData('moduleId', module.id);
+            e.dataTransfer.setData('sourceCellId', sourceCellId);
+        };
+        const handleClick = (e) => {
+            e.stopPropagation();
+            onSelect(isSelected ? null : module.id, sourceCellId);
+        };
+        return (
+            <div
+                draggable
+                onDragStart={handleDragStart}
+                onClick={handleClick}
+                className={`p-2.5 rounded-md text-white cursor-grab shadow-md flex flex-col gap-1 ${module.color} ${isSelected ? 'ring-2 ring-offset-2 ring-offset-gray-800 ring-sky-400' : ''}`}
+            >
+                <strong className="block text-sm truncate font-bold">{module.name}</strong>
+                {module.description && <p className="text-xs text-white/80 font-normal truncate">{module.description}</p>}
+                <div className="text-xs text-white/90 font-medium mt-1 space-y-1">
+                    {module.speakers && (
+                        <div className="flex items-center gap-1.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" /></svg>
+                            <span className="truncate">{module.speakers}</span>
+                        </div>
+                    )}
+                    {module.maxStudents && (
+                        <div className="flex items-center gap-1.5">
+                             <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" /></svg>
+                            <span className="truncate">{module.maxStudents} élèves max</span>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+    
+    // --- FROM components/CalendarCell.tsx ---
+    const SPECIAL_WEEKS = {
+        10: { text: 'PFMP', color: '#c7f0a6', textColor: '#1f2937' }, 11: { text: 'PFMP', color: '#c7f0a6', textColor: '#1f2937' },
+        12: { text: 'PFMP', color: '#c7f0a6', textColor: '#1f2937' }, 40: { text: 'PFMP', color: '#c7f0a6', textColor: '#1f2937' },
+        41: { text: 'PFMP', color: '#c7f0a6', textColor: '#1f2937' }, 42: { text: 'PFMP', color: '#c7f0a6', textColor: '#1f2937' },
+        43: { text: 'Vacances de la Toussaint', color: '#c7c511', textColor: '#1f2937' }, 44: { text: 'Vacances de la Toussaint', color: '#c7c511', textColor: '#1f2937' },
+        52: { text: 'Vacances de Noël', color: '#c7c511', textColor: '#1f2937' }, 1: { text: 'Vacances de Noël', color: '#c7c511', textColor: '#1f2937' },
+        8: { text: "Vacances d'hiver", color: '#c7c511', textColor: '#1f2937' }, 9: { text: "Vacances d'hiver", color: '#c7c511', textColor: '#1f2937' },
+        16: { text: 'Vacances de printemps', color: '#c7c511', textColor: '#1f2937' }, 17: { text: 'Vacances de printemps', color: '#c7c511', textColor: '#1f2937' },
+        28: { text: "Vacances d'été", color: '#c7c511', textColor: '#1f2937' }, 29: { text: "Vacances d'été", color: '#c7c511', textColor: '#1f2937' },
+        30: { text: "Vacances d'été", color: '#c7c511', textColor: '#1f2937' }, 31: { text: "Vacances d'été", color: '#c7c511', textColor: '#1f2937' },
+        32: { text: "Vacances d'été", color: '#c7c511', textColor: '#1f2937' }, 33: { text: "Vacances d'été", color: '#c7c511', textColor: '#1f2937' },
+        34: { text: "Vacances d'été", color: '#c7c511', textColor: '#1f2937' }, 35: { text: "Vacances d'été", color: '#c7c511', textColor: '#1f2937' },
+    };
+    const CalendarCell = ({ cellId, weekNumber, moduleIds, modules, onDrop, selectedModuleId, onSelectModule }) => {
+        const [isDragOver, setIsDragOver] = React.useState(false);
+        const specialWeekInfo = SPECIAL_WEEKS[weekNumber];
+        const handleDragOver = (e) => { if (specialWeekInfo) return; e.preventDefault(); setIsDragOver(true); };
+        const handleDragLeave = (e) => { if (specialWeekInfo) return; e.preventDefault(); setIsDragOver(false); };
+        const handleDrop = (e) => {
+            if (specialWeekInfo) return; e.preventDefault(); setIsDragOver(false);
+            const moduleId = e.dataTransfer.getData('moduleId'); const sourceCellId = e.dataTransfer.getData('sourceCellId');
+            onDrop(moduleId, sourceCellId, cellId);
+        };
+        if (specialWeekInfo) {
+            return (
+                <div className="p-2 rounded-md min-h-[80px] flex-grow flex items-center justify-center text-center" style={{ backgroundColor: specialWeekInfo.color }}>
+                    <span className="text-sm font-bold" style={{ color: specialWeekInfo.textColor || '#1f2937' }}>{specialWeekInfo.text}</span>
+                </div>
+            );
+        }
+        return (
+            <div onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave} className={`p-2 rounded-md transition-colors duration-300 min-h-[80px] flex-grow ${isDragOver ? 'bg-sky-900/50' : 'bg-gray-700/50'}`}>
+                <div className="flex justify-between items-center mb-2"><span className="text-xs font-bold text-gray-400">S{weekNumber}</span></div>
+                <div className="flex flex-col gap-1">
+                    {moduleIds.map((id, index) => modules[id] && (
+                         <Module key={`${id}-${index}`} module={modules[id]} sourceCellId={cellId} isSelected={selectedModuleId === id} onSelect={(moduleId) => onSelectModule(moduleId, cellId)} />
+                    ))}
+                </div>
+            </div>
+        );
+    };
+    
+    // --- FROM components/Calendar.tsx ---
+    const COLUMN_LAYOUT = [ ['Septembre', 'Janvier', 'Mai'], ['Octobre', 'Février', 'Juin'], ['Novembre', 'Mars', 'Juillet'], ['Décembre', 'Avril', 'Août'], ];
+    const CALENDAR_DATA_BY_NAME = CALENDAR_STRUCTURE.reduce((acc, monthData) => { acc[monthData.month] = monthData; return acc; }, {});
+    const Calendar = ({ calendarState, modules, onDrop, selectedModuleId, onSelectModule }) => {
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {COLUMN_LAYOUT.map((column, colIndex) => (
+                    <div key={`col-${colIndex}`} className="flex flex-col gap-4">
+                        {column.map(monthName => {
+                            const monthData = CALENDAR_DATA_BY_NAME[monthName]; if (!monthData) return null;
+                            const { month, weeks } = monthData;
+                            const weekCells = weeks.map(week => {
+                                const cellId = `${month}-${week}`;
+                                return <CalendarCell key={cellId} cellId={cellId} weekNumber={week} moduleIds={calendarState[cellId] || []} modules={modules} onDrop={onDrop} selectedModuleId={selectedModuleId} onSelectModule={onSelectModule} />;
+                            });
+                            return (
+                                <div key={month} className="bg-gray-800 p-3 rounded-lg flex flex-col gap-2">
+                                    <h2 className="text-xl font-bold text-center text-sky-400 mb-2">{month}</h2>
+                                    {weekCells}
+                                </div>
+                            );
+                        })}
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
+    // --- FROM components/CreateModuleForm.tsx ---
+    const CreateModuleForm = ({ onCreate }) => {
+        const [name, setName] = React.useState(''); const [description, setDescription] = React.useState('');
+        const [speakers, setSpeakers] = React.useState(''); const [maxStudents, setMaxStudents] = React.useState('');
+        const [selectedColor, setSelectedColor] = React.useState(PALETTE_COLORS[0]);
+        const handleSubmit = (e) => {
+            e.preventDefault();
+            if (name.trim()) {
+                onCreate({ name, description, speakers, maxStudents, color: selectedColor });
+                setName(''); setDescription(''); setSpeakers(''); setMaxStudents('');
+            }
+        };
+        const inputClasses = "w-full px-3 py-2 text-white bg-gray-800 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500";
+        const labelClasses = "block text-sm font-medium text-gray-300 mb-1";
+        return (
+            <div className="p-4 bg-gray-700/50 rounded-lg">
+                <h2 className="text-lg font-semibold mb-3">Créer un module</h2>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div><label htmlFor="module-name" className={labelClasses}>NOM DU MODULE :</label><input id="module-name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Introduction à React" className={inputClasses} required /></div>
+                    <div><label htmlFor="module-desc" className={labelClasses}>Description sommaire :</label><textarea id="module-desc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Contenu du cours..." rows={2} className={inputClasses} /></div>
+                    <div><label htmlFor="module-speakers" className={labelClasses}>Intervenant(s) :</label><input id="module-speakers" type="text" value={speakers} onChange={(e) => setSpeakers(e.target.value)} placeholder="Ex: Jean Dupont" className={inputClasses} /></div>
+                    <div><label htmlFor="module-students" className={labelClasses}>Nombre élèves max :</label><input id="module-students" type="number" value={maxStudents} onChange={(e) => setMaxStudents(e.target.value)} placeholder="Ex: 25" className={inputClasses} /></div>
+                    <div className="grid grid-cols-6 gap-2 pt-2">
+                        {PALETTE_COLORS.map(color => (
+                            <button key={color} type="button" onClick={() => setSelectedColor(color)} className={`h-8 w-full rounded ${color} transition-transform duration-150 ${selectedColor === color ? 'ring-2 ring-offset-2 ring-offset-gray-800 ring-white scale-110' : 'hover:scale-110'}`} aria-label={`Select color ${color}`} />
+                        ))}
+                    </div>
+                    <button type="submit" className="w-full px-4 py-2 font-bold text-white bg-sky-600 rounded-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-sky-500 transition-colors duration-200">Générer le Module</button>
+                </form>
+            </div>
+        );
+    };
+
+    // --- FROM components/LoginScreen.tsx ---
+    const LoginScreen = ({ onLogin }) => {
+        const [password, setPassword] = React.useState('');
+        const handleSubmit = (e) => { e.preventDefault(); onLogin(password); };
+        return (
+            <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
+                <div className="w-full max-w-sm p-8 space-y-6 bg-gray-800 rounded-lg shadow-lg">
+                    <h1 className="text-3xl font-bold text-center text-sky-400">Accès Enseignant</h1>
+                    <p className="text-center text-gray-400">Veuillez entrer l'identifiant commun pour accéder au planning.</p>
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div><label htmlFor="password-input" className="sr-only">Identifiant</label><input id="password-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Identifiant commun" className="w-full px-4 py-2 text-white bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500" /></div>
+                        <button type="submit" className="w-full px-4 py-2 font-bold text-white bg-sky-600 rounded-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-sky-500 transition-colors duration-200">Se connecter</button>
+                    </form>
+                </div>
+            </div>
+        );
+    };
+    
+    // --- FROM components/ModulePalette.tsx ---
+    const ModulePalette = ({ cellId, moduleIds, modules, onDrop, selectedModuleId, onSelectModule }) => {
+        const [isDragOver, setIsDragOver] = React.useState(false);
+        const handleDragOver = (e) => { e.preventDefault(); setIsDragOver(true); };
+        const handleDragLeave = (e) => { e.preventDefault(); setIsDragOver(false); };
+        const handleDrop = (e) => {
+            e.preventDefault(); setIsDragOver(false);
+            const moduleId = e.dataTransfer.getData('moduleId'); const sourceCellId = e.dataTransfer.getData('sourceCellId');
+            onDrop(moduleId, sourceCellId, cellId);
+        };
+        return (
+            <div className="flex-1 flex flex-col">
+                <h2 className="text-lg font-semibold mb-3">Modules disponibles</h2>
+                <div onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave} className={`flex-1 p-3 bg-gray-900/50 rounded-lg border-2 border-dashed ${isDragOver ? 'border-sky-500' : 'border-gray-600'} transition-colors duration-200`}>
+                    <div className="flex flex-wrap gap-2">
+                        {moduleIds.map(id => (
+                            <Module key={id} module={modules[id]} sourceCellId={cellId} isSelected={selectedModuleId === id} onSelect={(moduleId) => onSelectModule(moduleId, cellId)} />
+                        ))}
+                         {moduleIds.length === 0 && (<p className="text-gray-400 text-sm w-full text-center py-4">Créez un module pour commencer.</p>)}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // --- FROM components/PrintButton.tsx ---
+    const DownloadButton = () => {
+        const [isLoading, setIsLoading] = React.useState(false);
+        const getFileName = () => `planning-soutien-${new Date().toISOString().slice(0, 10)}`;
+        const captureCanvas = async () => {
+            const elementToCapture = document.querySelector('.printable-area');
+            if (!elementToCapture) { console.error('Printable area not found'); return null; }
+            const clone = elementToCapture.cloneNode(true);
+            const printContainer = document.createElement('div');
+            printContainer.style.position = 'absolute'; printContainer.style.left = '-9999px'; printContainer.style.top = '0px';
+            printContainer.style.width = '1920px'; clone.style.margin = '0';
+            printContainer.appendChild(clone); document.body.appendChild(printContainer);
+            let canvas = null;
+            try {
+                await new Promise(resolve => setTimeout(resolve, 300));
+                const captureWidth = 1920; const captureHeight = clone.scrollHeight;
+                canvas = await html2canvas(clone, { scale: 2, useCORS: true, backgroundColor: '#111827', width: captureWidth, height: captureHeight, windowWidth: captureWidth, windowHeight: captureHeight });
+            } catch (error) { console.error("Error during html2canvas capture:", error); } 
+            finally { document.body.removeChild(printContainer); }
+            return canvas;
+        };
+        const handleDownloadPDF = async () => {
+            setIsLoading(true);
+            try {
+                const canvas = await captureCanvas();
+                if (canvas) {
+                    const imgData = canvas.toDataURL('image/png'); const imgWidth = canvas.width; const imgHeight = canvas.height;
+                    const pdfWidth = 1190.55; const pdfHeight = (imgHeight * pdfWidth) / imgWidth;
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a3' });
+                    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                    pdf.save(`${getFileName()}.pdf`);
+                }
+            } catch (error) { console.error("Error generating PDF:", error); alert("Une erreur est survenue lors de la génération du PDF."); } 
+            finally { setIsLoading(false); }
+        };
+        return (
+            <div className="no-print">
+                <button onClick={handleDownloadPDF} disabled={isLoading} className="inline-flex items-center justify-center rounded-md shadow-sm px-4 py-2 bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-indigo-500 transition-colors duration-200 disabled:bg-indigo-800 disabled:cursor-not-allowed">
+                    {isLoading ? 'Génération en cours...' : 'Télécharger (PDF A3)'}
+                    {!isLoading && (<svg xmlns="http://www.w3.org/2000/svg" className="ml-2 h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" /></svg>)}
+                </button>
+            </div>
+        );
+    };
+
+    // --- FROM App.tsx ---
+    const App = () => {
+        const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+        const [modules, setModules] = React.useState(() => {
+            try { return localStorage.getItem('planningAppModules') ? JSON.parse(localStorage.getItem('planningAppModules')) : {}; }
+            catch (error) { console.error("Failed to parse modules from localStorage", error); return {}; }
+        });
+        const [calendarState, setCalendarState] = React.useState(() => {
+            try { if (localStorage.getItem('planningAppCalendarState')) { return JSON.parse(localStorage.getItem('planningAppCalendarState')); } }
+            catch (error) { console.error("Failed to parse calendar state from localStorage", error); }
+            const initialState = { 'palette': [] };
+            CALENDAR_STRUCTURE.forEach(month => { month.weeks.forEach(week => { initialState[`${month.month}-${week}`] = []; }); });
+            return initialState;
+        });
+        const [selectedModuleInfo, setSelectedModuleInfo] = React.useState(null);
+
+        React.useEffect(() => {
+            try {
+                localStorage.setItem('planningAppModules', JSON.stringify(modules));
+                localStorage.setItem('planningAppCalendarState', JSON.stringify(calendarState));
+            } catch (error) { console.error("Failed to save state to localStorage", error); }
+        }, [modules, calendarState]);
+
+        const handleLogin = (password) => {
+            if (password === SHARED_PASSWORD) { setIsLoggedIn(true); } else { alert('Identifiant incorrect.'); }
+        };
+        const handleCreateModule = React.useCallback((data) => {
+            const newModule = { id: `module-${Date.now()}-${Math.random()}`, ...data };
+            setModules(prev => ({ ...prev, [newModule.id]: newModule }));
+            setCalendarState(prev => ({ ...prev, palette: [...(prev.palette || []), newModule.id] }));
+        }, []);
+        const handleDrop = React.useCallback((moduleId, sourceCellId, targetCellId) => {
+            if (moduleId && sourceCellId && targetCellId && sourceCellId !== targetCellId) {
+                setCalendarState(prev => {
+                    const newState = { ...prev };
+                    const sourceModules = [...(newState[sourceCellId] || [])];
+                    const moduleIndex = sourceModules.indexOf(moduleId);
+                    if (moduleIndex > -1) { sourceModules.splice(moduleIndex, 1); }
+                    newState[sourceCellId] = sourceModules;
+                    const targetModules = [...(newState[targetCellId] || [])];
+                    targetModules.push(moduleId); newState[targetCellId] = targetModules;
+                    return newState;
+                });
+                setSelectedModuleInfo(null);
+            }
+        }, []);
+        const handleSelectModule = (moduleId, cellId) => {
+            if (moduleId && cellId) { setSelectedModuleInfo({ id: moduleId, cellId }); } else { setSelectedModuleInfo(null); }
+        };
+        const handleDeleteModule = React.useCallback(() => {
+            if (!selectedModuleInfo) return;
+            const { id: moduleId, cellId } = selectedModuleInfo;
+            if (cellId === 'palette') {
+                if (window.confirm("Supprimer ce module de la palette le retirera de tout le calendrier. Continuer ?")) {
+                    setModules(prev => { const newModules = { ...prev }; delete newModules[moduleId]; return newModules; });
+                    setCalendarState(prev => { const newState = { ...prev }; for (const key in newState) { newState[key] = newState[key].filter(id => id !== moduleId); } return newState; });
+                }
+            } else {
+                setCalendarState(prev => {
+                    const newState = { ...prev };
+                    const cellModules = [...(newState[cellId] || [])];
+                    const indexToRemove = cellModules.indexOf(moduleId);
+                    if (indexToRemove > -1) { cellModules.splice(indexToRemove, 1); }
+                    newState[cellId] = cellModules;
+                    return newState;
+                });
+            }
+            setSelectedModuleInfo(null);
+        }, [selectedModuleInfo]);
+        const handleDuplicateModule = React.useCallback(() => {
+            if (!selectedModuleInfo || selectedModuleInfo.cellId === 'palette') return;
+            const { id: moduleId, cellId } = selectedModuleInfo;
+            setCalendarState(prev => {
+                const newState = { ...prev };
+                const cellModules = [...(newState[cellId] || [])];
+                const indexToDuplicate = cellModules.lastIndexOf(moduleId);
+                if (indexToDuplicate > -1) { cellModules.splice(indexToDuplicate + 1, 0, moduleId); }
+                newState[cellId] = cellModules; return newState;
+            });
+            setSelectedModuleInfo(null);
+        }, [selectedModuleInfo]);
+
+        React.useEffect(() => {
+            const handleKeyDown = (event) => {
+                const target = event.target;
+                if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+                if (event.key === 'Delete' || event.key === 'Backspace') { if(selectedModuleInfo) { handleDeleteModule(); } }
+                else if ((event.ctrlKey || event.metaKey) && (event.key === 'd' || event.key === 'D')) {
+                    if (selectedModuleInfo) { event.preventDefault(); handleDuplicateModule(); }
+                }
+            };
+            window.addEventListener('keydown', handleKeyDown);
+            return () => { window.removeEventListener('keydown', handleKeyDown); };
+        }, [selectedModuleInfo, handleDeleteModule, handleDuplicateModule]);
+
+        if (!isLoggedIn) { return <LoginScreen onLogin={handleLogin} />; }
+        return (
+            <div id="app-container" className="flex flex-col md:flex-row h-screen bg-gray-900 text-white font-sans">
+                <aside className="w-full md:w-80 p-4 bg-gray-800 shadow-lg flex flex-col gap-6 overflow-y-auto no-print">
+                    <h1 className="text-2xl font-bold text-center text-sky-400">Panneau de Contrôle</h1>
+                    <CreateModuleForm onCreate={handleCreateModule} />
+                    <ModulePalette cellId="palette" moduleIds={calendarState['palette'] || []} modules={modules} onDrop={handleDrop} selectedModuleId={selectedModuleInfo?.id ?? null} onSelectModule={handleSelectModule} />
+                </aside>
+                <main className="flex-1 p-4 overflow-auto printable-area">
+                    <div className="flex justify-between items-start mb-4">
+                        <h1 className="text-xl font-bold flex-grow pr-4">ORGANISATION DES MODULES DU SOUTIEN AU PARCOURS - TERMINALES PROFESSIONNELLES - 2025/2026</h1>
+                        <DownloadButton />
+                    </div>
+                    <Calendar calendarState={calendarState} modules={modules} onDrop={handleDrop} selectedModuleId={selectedModuleInfo?.id ?? null} onSelectModule={handleSelectModule} />
+                </main>
+            </div>
+        );
+    };
+
+    // --- FROM index.tsx ---
+    const rootElement = document.getElementById('root');
+    const root = ReactDOM.createRoot(rootElement);
+    root.render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    );
+
+    </script>
+</body>
 </html>
