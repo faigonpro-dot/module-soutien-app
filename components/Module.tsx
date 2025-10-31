@@ -1,45 +1,55 @@
+import React from 'react';
+import { Module as ModuleType } from '../types';
 
-import React, { useState } from 'react';
-
-interface LoginScreenProps {
-    onLogin: (password: string) => void;
+interface ModuleProps {
+    module: ModuleType;
+    sourceCellId: string;
+    isSelected: boolean;
+    onSelect: (moduleId: string | null, sourceCellId: string) => void;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
-    const [password, setPassword] = useState('');
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onLogin(password);
+const Module: React.FC<ModuleProps> = ({ module, sourceCellId, isSelected, onSelect }) => {
+    const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+        e.dataTransfer.setData('moduleId', module.id);
+        e.dataTransfer.setData('sourceCellId', sourceCellId);
     };
 
+    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        e.stopPropagation(); // Prevent calendar cell click events
+        onSelect(isSelected ? null : module.id, sourceCellId);
+    };
+    
     return (
-        <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
-            <div className="w-full max-w-sm p-8 space-y-6 bg-gray-800 rounded-lg shadow-lg">
-                <h1 className="text-3xl font-bold text-center text-sky-400">Accès Enseignant</h1>
-                <p className="text-center text-gray-400">Veuillez entrer l'identifiant commun pour accéder au planning.</p>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                        <label htmlFor="password-input" className="sr-only">Identifiant</label>
-                        <input
-                            id="password-input"
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Identifiant commun"
-                            className="w-full px-4 py-2 text-white bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500"
-                        />
+        <div
+            draggable
+            onDragStart={handleDragStart}
+            onClick={handleClick}
+            className={`p-2.5 rounded-md text-white cursor-grab shadow-md flex flex-col gap-1 ${module.color} ${isSelected ? 'ring-2 ring-offset-2 ring-offset-gray-800 ring-sky-400' : ''}`}
+        >
+            <strong className="block text-sm truncate font-bold">{module.name}</strong>
+            
+            {module.description && <p className="text-xs text-white/80 font-normal truncate">{module.description}</p>}
+            
+            <div className="text-xs text-white/90 font-medium mt-1 space-y-1">
+                {module.speakers && (
+                    <div className="flex items-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                        </svg>
+                        <span className="truncate">{module.speakers}</span>
                     </div>
-                    <button
-                        type="submit"
-                        className="w-full px-4 py-2 font-bold text-white bg-sky-600 rounded-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-sky-500 transition-colors duration-200"
-                    >
-                        Se connecter
-                    </button>
-                </form>
+                )}
+                {module.maxStudents && (
+                    <div className="flex items-center gap-1.5">
+                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                        </svg>
+                        <span className="truncate">{module.maxStudents} élèves max</span>
+                    </div>
+                )}
             </div>
         </div>
     );
 };
 
-export default LoginScreen;
+export default Module;
